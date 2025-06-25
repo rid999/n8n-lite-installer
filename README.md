@@ -24,3 +24,10 @@ Ideal for personal automation, micro-SaaS, or private workflows with minimal inf
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/rid999/n8n-lite-installer/main/install-n8n-lite.sh)
+
+
+## 🙌 Credits
+
+Created and maintained by **Ridwan Wahyu Hariyanto**  
+GitHub: [@rid999](https://github.com/rid999)  
+Released under the [MIT License](LICENSE)
