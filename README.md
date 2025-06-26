@@ -30,6 +30,41 @@ bash <(curl -s https://raw.githubusercontent.com/rid999/n8n-lite-installer/main/
 
 ---
 
+## ❗ Having Trouble Accessing n8n?
+
+If you cannot access the n8n dashboard after installation (e.g. connection refused),  
+your VPS provider may block direct Docker port exposure.
+
+**Fix:** Install and use Nginx as a reverse proxy to forward traffic to the n8n container.
+
+Example Nginx config:
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://localhost:5678;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+After saving the config, restart nginx:
+
+```bash
+nginx -t && systemctl reload nginx
+```
+
+Then visit: http://your-vps-ip
+
+---
+
 ## 📂 Files
 
 | File | Description |
