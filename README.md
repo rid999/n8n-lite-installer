@@ -29,3 +29,9 @@ bash <(curl -s https://raw.githubusercontent.com/rid999/n8n-lite-installer/main/
 
 
 
+## 🙌 Credits
+Created and maintained by Ridwan Wahyu Hariyanto
+GitHub: @rid999
+Released under the MIT License
+
+---
