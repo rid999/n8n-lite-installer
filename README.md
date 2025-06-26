@@ -18,7 +18,7 @@ Ideal for personal automation, micro-SaaS, or private workflows with minimal inf
 ## 📦 Requirements
 
 - Ubuntu 20.04 / 22.04 VPS  
-- Min. 1 vCPU, 1GB RAM, 10GB storage  
+- Minimum: 1 vCPU, 1GB RAM, 10GB storage  
 
 ---
 
@@ -26,12 +26,3 @@ Ideal for personal automation, micro-SaaS, or private workflows with minimal inf
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/rid999/n8n-lite-installer/main/install-n8n-lite.sh)
-
-
-
-## 🙌 Credits
-Created and maintained by Ridwan Wahyu Hariyanto
-GitHub: @rid999
-Released under the MIT License
-
----
