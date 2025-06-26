@@ -26,3 +26,28 @@ Ideal for personal automation, micro-SaaS, or private workflows with minimal inf
 
 ```bash
 bash <(curl -s https://raw.githubusercontent.com/rid999/n8n-lite-installer/main/install-n8n-lite.sh)
+```
+
+---
+
+## 📂 Files
+
+| File | Description |
+|------|-------------|
+| `install-n8n-lite.sh` | Main bash script |
+| `.env` | Configuration for auth and timezone |
+| `docker-compose.yml` | Docker setup for n8n (SQLite backend) |
+
+---
+
+## 🙌 Credits
+
+Created and maintained by **Ridwan Wahyu Hariyanto**  
+GitHub: [@rid999](https://github.com/rid999)  
+Released under the [MIT License](LICENSE)
+
+---
+
+## 📌 License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
