@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# N8N Installation Script for Ubuntu 22 VPS with Security Hardening
+# N8N Docker Installation Script for Ubuntu 22 VPS (1GB RAM Optimized)
 # Author: Auto-generated installer
-# Version: 1.0
+# Version: 2.0 - Docker Edition
 
 set -e  # Exit on any error
 
@@ -19,26 +19,27 @@ cat << "EOF"
 ░▒▓█▓▒░░▒▓█▓▒░▒▓█▓▒░▒▓███████▓▒░ ░▒▓██████▓▒░ ░▒▓██████▓▒░ ░▒▓██████▓▒░  
 
 ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
-                                    🚀 UBUNTU 22 VPS SECURITY INSTALLER 🚀                                    
-                                        Created by: RID999                                                 
+                             🐳 DOCKER N8N - 1GB VPS OPTIMIZED INSTALLER 🐳                                    
+                                        Created by: RIDWAN                                                   
 ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
 EOF
 echo -e "\033[0m"
 
 echo -e "\033[1;32m"
-echo "🔧 Features included:"
-echo "   ✅ N8N Workflow Automation"
-echo "   🔒 Advanced Security Hardening"
-echo "   🛡️  UFW Firewall + Fail2Ban"
-echo "   📊 Monitoring & Log Rotation"
+echo "🔧 Optimized Features for 1GB VPS:"
+echo "   🐳 Docker N8N (Lightweight)"
+echo "   💾 Memory Optimized (~300MB RAM)"
+echo "   🔒 Essential Security Only"
+echo "   🛡️  UFW Firewall + Basic Protection"
+echo "   📊 Minimal Logging"
 echo "   🚀 Auto-restart & Health Checks"
 echo ""
-echo -e "\033[1;33m⚠️  This script will modify your system security settings!"
+echo -e "\033[1;33m⚠️  Optimized for low-resource VPS (1GB RAM)!"
 echo -e "\033[1;36m🎯 Target Port: 5551"
 echo -e "\033[0m"
 
 # Confirmation prompt
-echo -ne "\033[1;37mDo you want to continue with the installation? (y/N): \033[0m"
+echo -ne "\033[1;37mDo you want to continue with the Docker installation? (y/N): \033[0m"
 read -r CONFIRM
 if [[ ! $CONFIRM =~ ^[Yy]$ ]]; then
     echo -e "\033[1;31mInstallation cancelled.\033[0m"
@@ -46,7 +47,7 @@ if [[ ! $CONFIRM =~ ^[Yy]$ ]]; then
 fi
 
 echo ""
-echo -e "\033[1;32m🚀 Starting installation...\033[0m"
+echo -e "\033[1;32m🚀 Starting Docker N8N installation...\033[0m"
 echo ""
 
 # Colors for output
@@ -58,8 +59,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 N8N_PORT=5551
-N8N_USER="n8n"
-N8N_HOME="/home/$N8N_USER"
+N8N_DATA_DIR="/opt/n8n-data"
+DOCKER_COMPOSE_DIR="/opt/n8n"
 
 # Logging function
 log() {
@@ -80,260 +81,339 @@ if [[ $EUID -ne 0 ]]; then
    error "This script must be run as root (use sudo)"
 fi
 
-log "Starting N8N installation with security hardening..."
-
-# System update and upgrade
-log "Updating system packages..."
-apt update -y
-apt upgrade -y
-
-# Install essential packages
-log "Installing essential packages..."
-apt install -y curl wget git build-essential software-properties-common apt-transport-https ca-certificates gnupg lsb-release ufw fail2ban unattended-upgrades
-
-# Configure automatic security updates
-log "Configuring automatic security updates..."
-echo 'Unattended-Upgrade::Automatic-Reboot "false";' >> /etc/apt/apt.conf.d/50unattended-upgrades
-echo 'Unattended-Upgrade::Remove-Unused-Dependencies "true";' >> /etc/apt/apt.conf.d/50unattended-upgrades
-systemctl enable unattended-upgrades
-
-# Install Node.js (LTS version)
-log "Installing Node.js..."
-curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-apt install -y nodejs
-
-# Verify Node.js installation
-node_version=$(node --version)
-npm_version=$(npm --version)
-log "Node.js version: $node_version"
-log "NPM version: $npm_version"
-
-# Create n8n user
-log "Creating n8n user..."
-if ! id "$N8N_USER" &>/dev/null; then
-    useradd -m -s /bin/bash $N8N_USER
-    log "User $N8N_USER created successfully"
-else
-    log "User $N8N_USER already exists"
+# Check available memory
+TOTAL_MEM=$(free -m | awk 'NR==2{printf "%.0f", $2}')
+if [ "$TOTAL_MEM" -lt 900 ]; then
+    error "Insufficient memory. This script requires at least 1GB RAM. Current: ${TOTAL_MEM}MB"
 fi
 
-# Configure UFW Firewall
+log "System Memory: ${TOTAL_MEM}MB - OK for Docker N8N"
+
+# System update (minimal for faster deployment)
+log "Quick system update..."
+apt update -y
+apt upgrade -y --with-new-pkgs
+
+# Install essential packages only
+log "Installing essential packages..."
+apt install -y curl wget ufw fail2ban htop unattended-upgrades
+
+# Configure automatic security updates (lightweight)
+log "Configuring automatic security updates..."
+echo 'Unattended-Upgrade::Automatic-Reboot "false";' >> /etc/apt/apt.conf.d/50unattended-upgrades
+systemctl enable unattended-upgrades
+
+# Install Docker
+log "Installing Docker..."
+curl -fsSL https://get.docker.com | sh
+systemctl start docker
+systemctl enable docker
+
+# Install Docker Compose
+log "Installing Docker Compose..."
+curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+
+# Verify Docker installation
+docker --version
+docker-compose --version
+
+# Configure UFW Firewall (minimal rules)
 log "Configuring UFW firewall..."
 ufw --force reset
 ufw default deny incoming
 ufw default allow outgoing
 
-# Allow SSH (check current SSH port)
+# Allow SSH (detect current port)
 SSH_PORT=$(ss -tlnp | grep sshd | awk '{print $4}' | cut -d':' -f2 | head -n1)
 if [ -z "$SSH_PORT" ]; then
     SSH_PORT=22
 fi
 ufw allow $SSH_PORT/tcp comment 'SSH'
 
-# Allow N8N port with rate limiting
-ufw allow $N8N_PORT/tcp comment 'N8N Application'
+# Allow N8N port
+ufw allow $N8N_PORT/tcp comment 'N8N Docker'
 
 # Enable firewall
 ufw --force enable
 
-# Configure Fail2Ban
+# Configure Fail2Ban (lightweight)
 log "Configuring Fail2Ban..."
 cat > /etc/fail2ban/jail.local << EOF
 [DEFAULT]
-bantime = 3600
+bantime = 1800
 findtime = 600
 maxretry = 5
-backend = systemd
 
 [sshd]
 enabled = true
 port = $SSH_PORT
-filter = sshd
-logpath = /var/log/auth.log
 maxretry = 3
 bantime = 3600
-
-[n8n-bruteforce]
-enabled = true
-port = $N8N_PORT
-filter = n8n-bruteforce
-logpath = /var/log/n8n/n8n.log
-maxretry = 5
-bantime = 7200
 EOF
 
-# Create Fail2Ban filter for N8N
-mkdir -p /etc/fail2ban/filter.d
-cat > /etc/fail2ban/filter.d/n8n-bruteforce.conf << EOF
-[Definition]
-failregex = ^.*Authentication failed.*<HOST>.*$
-            ^.*Invalid credentials.*<HOST>.*$
-            ^.*Login attempt failed.*<HOST>.*$
-ignoreregex =
-EOF
-
-# Restart and enable Fail2Ban
 systemctl restart fail2ban
 systemctl enable fail2ban
 
-# Install N8N globally
-log "Installing N8N..."
-npm install -g n8n
-
 # Create N8N directories
 log "Setting up N8N directories..."
+mkdir -p $N8N_DATA_DIR
+mkdir -p $DOCKER_COMPOSE_DIR
 mkdir -p /var/log/n8n
-mkdir -p $N8N_HOME/.n8n
-chown -R $N8N_USER:$N8N_USER /var/log/n8n
-chown -R $N8N_USER:$N8N_USER $N8N_HOME
 
-# Create N8N configuration
-log "Creating N8N configuration..."
-cat > $N8N_HOME/.n8n/config << EOF
-N8N_PORT=$N8N_PORT
-N8N_HOST=0.0.0.0
-N8N_PROTOCOL=http
-WEBHOOK_URL=http://$(curl -s ifconfig.me):$N8N_PORT/
-N8N_LOG_LEVEL=info
-N8N_LOG_OUTPUT=file
-N8N_LOG_FILE=/var/log/n8n/n8n.log
-N8N_BASIC_AUTH_ACTIVE=true
-N8N_BASIC_AUTH_USER=admin
-N8N_BASIC_AUTH_PASSWORD=$(openssl rand -base64 12)
-DB_TYPE=sqlite
+# Generate secure credentials
+N8N_USER="admin"
+N8N_PASSWORD=$(openssl rand -base64 12)
+WEBHOOK_URL="http://$(curl -s ifconfig.me):$N8N_PORT/"
+
+# Create optimized docker-compose.yml for 1GB VPS
+log "Creating Docker Compose configuration..."
+cat > $DOCKER_COMPOSE_DIR/docker-compose.yml << EOF
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "$N8N_PORT:5678"
+    environment:
+      # Basic Configuration
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=$WEBHOOK_URL
+      
+      # Memory Optimization
+      - NODE_OPTIONS=--max-old-space-size=512
+      - N8N_LOG_LEVEL=warn
+      - N8N_LOG_OUTPUT=console
+      
+      # Security
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=$N8N_USER
+      - N8N_BASIC_AUTH_PASSWORD=$N8N_PASSWORD
+      
+      # Database (SQLite for minimal resource usage)
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/home/node/.n8n/database.sqlite
+      
+      # Performance Tweaks for 1GB VPS
+      - N8N_DISABLE_UI=false
+      - N8N_METRICS=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      
+      # Generic Timezone
+      - GENERIC_TIMEZONE=Asia/Jakarta
+      - TZ=Asia/Jakarta
+      
+    volumes:
+      - $N8N_DATA_DIR:/home/node/.n8n
+    
+    # Resource limits for 1GB VPS
+    deploy:
+      resources:
+        limits:
+          memory: 400M
+        reservations:
+          memory: 200M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 EOF
 
-chown $N8N_USER:$N8N_USER $N8N_HOME/.n8n/config
-
-# Create systemd service
-log "Creating N8N systemd service..."
-cat > /etc/systemd/system/n8n.service << EOF
+# Create systemd service for docker-compose
+log "Creating systemd service..."
+cat > /etc/systemd/system/n8n-docker.service << EOF
 [Unit]
-Description=n8n workflow automation
-After=network.target
+Description=N8N Docker Container
+Requires=docker.service
+After=docker.service
 
 [Service]
-Type=simple
-User=$N8N_USER
-ExecStart=/usr/bin/n8n start
-EnvironmentFile=$N8N_HOME/.n8n/config
-Restart=on-failure
-RestartSec=5
-StandardOutput=append:/var/log/n8n/n8n.log
-StandardError=append:/var/log/n8n/n8n.log
-
-# Security settings
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=/home/$N8N_USER
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$DOCKER_COMPOSE_DIR
+ExecStart=/usr/local/bin/docker-compose up -d
+ExecStop=/usr/local/bin/docker-compose down
+TimeoutStartSec=0
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Set up log rotation
+# Set up log rotation (minimal)
 log "Setting up log rotation..."
-cat > /etc/logrotate.d/n8n << EOF
-/var/log/n8n/*.log {
+cat > /etc/logrotate.d/n8n-docker << EOF
+/var/lib/docker/containers/*/*-json.log {
     daily
     missingok
-    rotate 14
+    rotate 7
     compress
     delaycompress
     notifempty
-    create 644 $N8N_USER $N8N_USER
-    postrotate
-        systemctl reload n8n
-    endscript
 }
 EOF
 
-# Enable and start N8N service
-log "Starting N8N service..."
+# Enable and start services
+log "Starting N8N Docker container..."
 systemctl daemon-reload
-systemctl enable n8n
-systemctl start n8n
+systemctl enable n8n-docker
+systemctl start n8n-docker
 
-# Wait for service to start
-sleep 5
+# Wait for container to start
+log "Waiting for N8N to initialize..."
+sleep 30
 
-# Check service status
-if systemctl is-active --quiet n8n; then
-    log "N8N service started successfully"
+# Check if container is running
+if docker ps | grep -q "n8n"; then
+    log "N8N Docker container started successfully"
 else
-    error "N8N service failed to start"
+    error "N8N Docker container failed to start. Check logs: docker logs n8n"
 fi
 
-# Security hardening
-log "Applying additional security hardening..."
+# Memory optimization tweaks
+log "Applying memory optimization..."
 
-# Disable root login via SSH (if not already disabled)
-sed -i 's/#PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
-sed -i 's/PermitRootLogin yes/PermitRootLogin no/' /etc/ssh/sshd_config
+# Reduce system swappiness for better performance on 1GB VPS
+echo "vm.swappiness=10" >> /etc/sysctl.conf
+echo "vm.vfs_cache_pressure=50" >> /etc/sysctl.conf
+sysctl -p
 
-# Disable password authentication (uncomment if you have SSH keys set up)
-# sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
-
-# Restart SSH service
-systemctl restart sshd
-
-# Set up basic monitoring
-log "Setting up basic monitoring..."
-cat > /usr/local/bin/n8n-monitor.sh << 'EOF'
+# Create monitoring script (lightweight)
+log "Setting up lightweight monitoring..."
+cat > /usr/local/bin/n8n-docker-monitor.sh << 'EOF'
 #!/bin/bash
-if ! systemctl is-active --quiet n8n; then
-    echo "$(date): N8N service is down, attempting restart" >> /var/log/n8n/monitor.log
-    systemctl restart n8n
+LOG_FILE="/var/log/n8n/monitor.log"
+
+# Check if container is running
+if ! docker ps | grep -q "n8n"; then
+    echo "$(date): N8N container is down, attempting restart" >> $LOG_FILE
+    cd /opt/n8n && docker-compose up -d
+    sleep 10
+    
+    # Check if restart was successful
+    if docker ps | grep -q "n8n"; then
+        echo "$(date): N8N container restart successful" >> $LOG_FILE
+    else
+        echo "$(date): N8N container restart failed" >> $LOG_FILE
+    fi
+fi
+
+# Check memory usage
+MEM_USAGE=$(docker stats --no-stream --format "{{.MemPerc}}" n8n 2>/dev/null | sed 's/%//')
+if [ ! -z "$MEM_USAGE" ] && [ "$(echo "$MEM_USAGE > 80" | bc 2>/dev/null)" = "1" ]; then
+    echo "$(date): High memory usage: ${MEM_USAGE}%" >> $LOG_FILE
 fi
 EOF
 
-chmod +x /usr/local/bin/n8n-monitor.sh
+chmod +x /usr/local/bin/n8n-docker-monitor.sh
 
-# Add monitoring to crontab
-(crontab -l 2>/dev/null; echo "*/5 * * * * /usr/local/bin/n8n-monitor.sh") | crontab -
+# Add monitoring to crontab (every 10 minutes)
+(crontab -l 2>/dev/null; echo "*/10 * * * * /usr/local/bin/n8n-docker-monitor.sh") | crontab -
+
+# Create useful management scripts
+log "Creating management scripts..."
+
+# Start script
+cat > /usr/local/bin/n8n-start << 'EOF'
+#!/bin/bash
+cd /opt/n8n && docker-compose up -d
+EOF
+chmod +x /usr/local/bin/n8n-start
+
+# Stop script
+cat > /usr/local/bin/n8n-stop << 'EOF'
+#!/bin/bash
+cd /opt/n8n && docker-compose down
+EOF
+chmod +x /usr/local/bin/n8n-stop
+
+# Restart script
+cat > /usr/local/bin/n8n-restart << 'EOF'
+#!/bin/bash
+cd /opt/n8n && docker-compose restart
+EOF
+chmod +x /usr/local/bin/n8n-restart
+
+# Logs script
+cat > /usr/local/bin/n8n-logs << 'EOF'
+#!/bin/bash
+docker logs -f n8n
+EOF
+chmod +x /usr/local/bin/n8n-logs
+
+# Status script
+cat > /usr/local/bin/n8n-status << 'EOF'
+#!/bin/bash
+echo "=== N8N Container Status ==="
+docker ps | grep n8n
+echo ""
+echo "=== N8N Container Stats ==="
+docker stats --no-stream n8n
+echo ""
+echo "=== System Memory ==="
+free -h
+EOF
+chmod +x /usr/local/bin/n8n-status
 
 # Get server IP
 SERVER_IP=$(curl -s ifconfig.me)
 
+# Final system info
+FINAL_MEM=$(free -m | awk 'NR==2{printf "%.0f", $3}')
+CONTAINER_MEM=$(docker stats --no-stream --format "{{.MemUsage}}" n8n 2>/dev/null || echo "N/A")
+
 # Display installation summary
 echo
 log "============================================="
-log "N8N INSTALLATION COMPLETED SUCCESSFULLY!"
+log "N8N DOCKER INSTALLATION COMPLETED!"
 log "============================================="
 echo
 log "N8N Configuration:"
-log "  URL: http://$SERVER_IP:$N8N_PORT"
-log "  Port: $N8N_PORT"
-log "  User: $N8N_USER"
+log "  🌐 URL: http://$SERVER_IP:$N8N_PORT"
+log "  🔌 Port: $N8N_PORT"
+log "  🐳 Container: n8n"
+log "  💾 Data Dir: $N8N_DATA_DIR"
 echo
-log "Security Features Enabled:"
-log "  ✓ UFW Firewall configured"
-log "  ✓ Fail2Ban protection active"
-log "  ✓ Automatic security updates"
-log "  ✓ Service hardening applied"
-log "  ✓ Log rotation configured"
-log "  ✓ Basic monitoring enabled"
+log "System Resources:"
+log "  📊 Total RAM: ${TOTAL_MEM}MB"
+log "  🔥 Used RAM: ${FINAL_MEM}MB"
+log "  🐳 N8N Memory: $CONTAINER_MEM"
+echo
+log "Security Features:"
+log "  ✓ UFW Firewall active"
+log "  ✓ Fail2Ban protection"
+log "  ✓ Auto security updates"
+log "  ✓ Container isolation"
 echo
 log "Authentication:"
-AUTH_USER=$(grep N8N_BASIC_AUTH_USER $N8N_HOME/.n8n/config | cut -d'=' -f2)
-AUTH_PASS=$(grep N8N_BASIC_AUTH_PASSWORD $N8N_HOME/.n8n/config | cut -d'=' -f2)
-log "  Username: $AUTH_USER"
-log "  Password: $AUTH_PASS"
+log "  👤 Username: $N8N_USER"
+log "  🔑 Password: $N8N_PASSWORD"
 echo
-log "Useful Commands:"
-log "  Check status: systemctl status n8n"
-log "  View logs: tail -f /var/log/n8n/n8n.log"
-log "  Restart service: systemctl restart n8n"
-log "  Firewall status: ufw status"
-log "  Fail2ban status: fail2ban-client status"
+log "Management Commands:"
+log "  ▶️  Start: n8n-start"
+log "  ⏹️  Stop: n8n-stop"
+log "  🔄 Restart: n8n-restart"
+log "  📋 Status: n8n-status"
+log "  📝 Logs: n8n-logs"
 echo
-warn "IMPORTANT: Save your authentication credentials!"
-warn "Change the default password after first login!"
+log "Docker Commands:"
+log "  Status: docker ps"
+log "  Logs: docker logs n8n"
+log "  Stats: docker stats n8n"
 echo
-log "Installation completed successfully!"
-log "Access N8N at: http://$SERVER_IP:$N8N_PORT"
+warn "IMPORTANT NOTES FOR 1GB VPS:"
+warn "• Save your credentials: $N8N_USER / $N8N_PASSWORD"
+warn "• Monitor memory usage with: n8n-status"
+warn "• N8N limited to ~400MB RAM usage"
+warn "• Avoid running complex workflows simultaneously"
+echo
+log "🎉 Installation completed successfully!"
+log "🌐 Access N8N at: http://$SERVER_IP:$N8N_PORT"
